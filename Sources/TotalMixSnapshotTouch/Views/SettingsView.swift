@@ -20,7 +20,7 @@ struct SettingsView: View {
                     Button("ポート設定を適用・再接続") { osc.reconnect() }
                     Text("TotalMix: Enable OSC ControlをON。OSC ControllerをIn Use、Incoming=7001、Outgoing=9001、Remote Host=127.0.0.1に設定してください。従来のOSCモードを使用します。")
                         .font(.caption).foregroundStyle(.secondary)
-                    Text("F1はMain（AN1/2）とAN3/4を登録・有効化してください。フェーダーはMainを動かし、TotalMixのF1連動を使用します。Dimの減衰量はTotalMix側の設定です。")
+                    Text("Fader 1はMain（AN1/2）とAN3/4を登録・有効化してください。フェーダーはMainを動かし、TotalMixのFader 1連動を使用します。Dimの減衰量はTotalMix側の設定です。")
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 Section("Snapshotの表示名・HIDE") {

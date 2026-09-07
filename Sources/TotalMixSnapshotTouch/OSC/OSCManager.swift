@@ -5,6 +5,8 @@ import Darwin
 /// One local TotalMix OSC controller, with state feedback. No Internet/LAN endpoint is used.
 @MainActor
 final class OSCManager: ObservableObject {
+    @Published private(set) var currentSnapshot: Int?
+    @Published private(set) var snapshotStateKnown = false
     @Published private(set) var lastSentSnapshot: Int?
     @Published private(set) var lastSentDate: Date?
     @Published private(set) var muteGroup1: Bool?
@@ -18,6 +20,7 @@ final class OSCManager: ObservableObject {
     private var socketFD: Int32 = -1
     private var reader: DispatchSourceRead?
     private var timer: Timer?
+    private var lastSnapshotFeedback = Date.distantPast
     private var lastFeedback = Date.distantPast
     private var lastVolumeFeedback = Date.distantPast
     private var lastMuteFeedback = Date.distantPast
@@ -72,6 +75,7 @@ final class OSCManager: ObservableObject {
         }
     }
     private func resetFeedback() {
+        currentSnapshot = nil; snapshotStateKnown = false; lastSnapshotFeedback = .distantPast
         lastSentSnapshot = nil; lastSentDate = nil
         connected = false; muteGroup1 = nil; dim = nil; mainVolume = nil
         volumeLabel = "— dB"; pendingMute = false; pendingDim = false
@@ -80,6 +84,7 @@ final class OSCManager: ObservableObject {
     }
     private func tick() {
         if Date().timeIntervalSince(lastFeedback) > 4 { resetFeedback() }
+        if Date().timeIntervalSince(lastSnapshotFeedback) > 4 { currentSnapshot = nil; snapshotStateKnown = false }
         if Date().timeIntervalSince(lastVolumeFeedback) > 4 { mainVolume = nil; volumeLabel = "— dB" }
         if Date().timeIntervalSince(lastMuteFeedback) > 4 { muteGroup1 = nil }
         if Date().timeIntervalSince(lastDimFeedback) > 4 { dim = nil }
@@ -166,7 +171,13 @@ final class OSCManager: ObservableObject {
                     }
                 case "/1/mastervolumeVal":
                     if case .string(let label) = message.value { volumeLabel = label }
-                default: continue
+                default:
+                    guard let number = SnapshotCommand.number(forFeedbackAddress: message.address),
+                          let value = message.number, value == 0 || value == 1 else { continue }
+                    if value == 1 { currentSnapshot = number }
+                    else if currentSnapshot == number { currentSnapshot = nil }
+                    snapshotStateKnown = true
+                    lastSnapshotFeedback = Date()
                 }
                 lastFeedback = Date(); connected = true; errorMessage = nil
             }

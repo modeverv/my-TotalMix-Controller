@@ -37,7 +37,7 @@ struct MainView: View {
                         ScrollView {
                             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 14), count: columns), spacing: 14) {
                                 ForEach(visibleNumbers, id: \.self) { number in
-                                    SnapshotButton(number: number, name: settings.name(for: number), lastSent: osc.lastSentSnapshot == number, enabled: osc.connected) {
+                                    SnapshotButton(number: number, name: settings.name(for: number), isSelected: osc.currentSnapshot == number, enabled: osc.connected) {
                                         // Also guard actions retained during a view update.
                                         if !settings.hiddenSnapshots.contains(number) { osc.recallSnapshot(number) }
                                     }
@@ -51,19 +51,7 @@ struct MainView: View {
                     }
                 }
                 MonitorControlsView().disabled(showsSettings)
-                HStack(alignment: .top, spacing: 10) {
-                    Circle().fill(osc.connected ? Color.mint : Color.orange).frame(width: 8, height: 8).padding(.top, 4)
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(osc.errorMessage ?? (osc.connected ? "OSC: 127.0.0.1 · 接続済み" : "OSC未接続 — 設定を確認してください"))
-                            .foregroundStyle(osc.connected && osc.errorMessage == nil ? Color.secondary : Color.orange)
-                        Text("強調表示は最後に送信したSnapshotです。TotalMixの現在状態とは同期しません。")
-                            .foregroundStyle(.secondary)
-                    }.font(.system(size: 11))
-                    Spacer(minLength: 0)
-                    if let date = osc.lastSentDate {
-                        Text(date, style: .time).font(.system(size: 11, design: .monospaced)).foregroundStyle(.secondary)
-                    }
-                }
+
             }
             .padding(24)
         }

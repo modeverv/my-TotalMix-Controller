@@ -13,7 +13,7 @@ struct MonitorControlsView: View {
             }
             HStack(spacing: 6) {
                 Circle().fill(osc.connected ? Color.mint : Color.orange).frame(width: 6, height: 6)
-                Text(osc.errorMessage ?? (osc.connected ? "OSC同期中 · F1: Main（AN1/2）＋ AN3/4" : (settings.oscEnabled ? "OSC応答待ち — 設定を確認してください" : "OSCは無効です")))
+                Text(osc.errorMessage ?? (osc.connected ? "OSC同期中 · Fader 1: Main（AN1/2）＋ AN3/4" : (settings.oscEnabled ? "OSC応答待ち — 設定を確認してください" : "OSCは無効です")))
                     .font(.caption).foregroundStyle(.secondary)
             }
         }
@@ -31,7 +31,7 @@ struct MonitorControlsView: View {
             control("DIM", icon: "speaker.wave.1.fill", value: osc.dim, pending: osc.pendingDim, action: osc.toggleDim)
             Button { osc.setMainVolumeToZeroDB() } label: {
                 VStack(spacing: 6) {
-                    Text("F1").font(.system(size: 14, weight: .semibold))
+                    Text("Fader 1").font(.system(size: 14, weight: .semibold))
                     Text("0 dB").font(.system(size: 16, weight: .semibold, design: .monospaced))
                 }
                 .frame(minWidth: 80, minHeight: 60)
@@ -42,8 +42,8 @@ struct MonitorControlsView: View {
             }
             .buttonStyle(.plain)
             .disabled(!osc.canAdjustVolume)
-            .accessibilityLabel("F1を0 dBに設定")
-            .help("Mainを0 dBに設定します。F1内の音量差は維持されます。")
+            .accessibilityLabel("Fader 1を0 dBに設定")
+            .help("Mainを0 dBに設定します。Fader 1内の音量差は維持されます。")
         }
     }
     private func control(_ name: String, icon: String, value: Bool?, pending: Bool, action: @escaping () -> Void) -> some View {
@@ -67,7 +67,7 @@ struct MonitorControlsView: View {
     private var fader: some View {
         VStack(alignment: .leading, spacing: 2) {
             HStack {
-                Text("F1 VOLUME").font(.system(size: 13, weight: .semibold))
+                Text("Fader 1 VOLUME").font(.system(size: 13, weight: .semibold))
                 Spacer()
                 Text(osc.volumeLabel).font(.system(size: 16, weight: .medium, design: .monospaced))
             }
@@ -82,7 +82,7 @@ struct MonitorControlsView: View {
             .frame(minHeight: 36)
             .tint(.mint)
             .disabled(!osc.canAdjustVolume)
-            .accessibilityLabel("F1音量（Main）")
+            .accessibilityLabel("Fader 1音量（Main）")
             .accessibilityValue(osc.volumeLabel)
             HStack { Text("−∞"); Spacer(); Text("+6 dB") }
                 .font(.system(size: 10, design: .monospaced)).foregroundStyle(.secondary)

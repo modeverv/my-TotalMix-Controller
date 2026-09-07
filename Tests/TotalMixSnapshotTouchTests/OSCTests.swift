@@ -48,6 +48,8 @@ final class OSCTests: XCTestCase {
         settings.oscSendPort = sendPort; settings.oscReceivePort = receivePort
         let manager = OSCManager(settings: settings)
         XCTAssertFalse(manager.canAdjustVolume)
+        XCTAssertNil(manager.currentSnapshot)
+        XCTAssertFalse(manager.snapshotStateKnown)
         func outgoing() -> [OSCMessage] {
             var result: [OSCMessage] = [], bytes = [UInt8](repeating: 0, count: 65535)
             while true {
@@ -89,6 +91,7 @@ final class OSCTests: XCTestCase {
         ])
         XCTAssertTrue(snapshots.allSatisfy { $0.value == .float(1) })
         XCTAssertEqual(manager.lastSentSnapshot, 8)
+        XCTAssertNil(manager.currentSnapshot) // Sending is not confirmation.
         XCTAssertNotNil(manager.lastSentDate)
         settings.setHidden(true, for: 2)
         XCTAssertFalse(manager.recallSnapshot(2))
@@ -96,10 +99,24 @@ final class OSCTests: XCTestCase {
         XCTAssertFalse(manager.recallSnapshot(9))
         XCTAssertTrue(outgoing().isEmpty)
         XCTAssertEqual(manager.lastSentSnapshot, 8)
-        // Snapshot feedback alone must not overwrite the meaning of last-sent state.
-        feedback("/3/snapshots/8/1", 1)
+        // External recall updates selection even for hidden snapshots, not last-sent history.
+        for number in 1...8 {
+            feedback(SnapshotCommand.address(for: number)!, 1)
+            try await Task.sleep(nanoseconds: 20_000_000)
+            XCTAssertEqual(manager.currentSnapshot, number)
+            XCTAssertTrue(manager.snapshotStateKnown)
+        }
+        feedback("/3/snapshots/8/1", 1) // Snapshot 1 becomes selected.
+        feedback("/3/snapshots/1/1", 0) // Late deselection of Snapshot 8 must not clear 1.
+        feedback("/3/snapshots/9/1", 1) // Invalid address.
+        feedback("/3/snapshots/2/1", 0.5) // Invalid state.
         try await Task.sleep(nanoseconds: 50_000_000)
+        XCTAssertEqual(manager.currentSnapshot, 1)
         XCTAssertEqual(manager.lastSentSnapshot, 8)
+        feedback("/3/snapshots/8/1", 0) // Edited mix / no active snapshot.
+        try await Task.sleep(nanoseconds: 50_000_000)
+        XCTAssertNil(manager.currentSnapshot)
+        XCTAssertTrue(manager.snapshotStateKnown)
         manager.toggleDim(); manager.toggleDim() // No double toggle before feedback.
         manager.toggleMuteGroup1(); manager.setMainVolume(0.3, force: true)
         XCTAssertEqual(outgoing().map(\.address), ["/1/mainDim", "/3/muteGroups/4/1", "/1/mastervolume"])
@@ -108,13 +125,19 @@ final class OSCTests: XCTestCase {
         XCTAssertNil(manager.errorMessage)
         XCTAssertNil(manager.lastSentSnapshot)
         XCTAssertNil(manager.lastSentDate)
+        XCTAssertNil(manager.currentSnapshot)
+        XCTAssertFalse(manager.snapshotStateKnown)
         XCTAssertFalse(manager.connected)
         feedback("/1/mastervolume", 0.3)
+        feedback("/3/snapshots/2/1", 1)
         try await Task.sleep(nanoseconds: 100_000_000)
         XCTAssertTrue(manager.canAdjustVolume)
+        XCTAssertEqual(manager.currentSnapshot, 7)
         try await Task.sleep(nanoseconds: 4_800_000_000)
         XCTAssertFalse(manager.connected)
         XCTAssertFalse(manager.canAdjustVolume)
+        XCTAssertNil(manager.currentSnapshot)
+        XCTAssertFalse(manager.snapshotStateKnown)
         XCTAssertFalse(manager.recallSnapshot(1))
         settings.oscEnabled = false; manager.reconnect()
         XCTAssertFalse(manager.recallSnapshot(1))
