@@ -1,0 +1,48 @@
+// !$*UTF8*$!
+{archiveVersion = 1; classes = {}; objectVersion = 56; objects = {
+A6046127813F3E45B0D45826 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/TotalMixSnapshotTouch/MIDI/MIDIManager.swift"; sourceTree = SOURCE_ROOT; };
+78DE721A7360760D7366F4C5 = { isa = PBXBuildFile; fileRef = A6046127813F3E45B0D45826; };
+66E3C8B935B131BD9DD8AA5D = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/TotalMixSnapshotTouch/Models/Snapshot.swift"; sourceTree = SOURCE_ROOT; };
+CAE5A756ED96D5797509A5B7 = { isa = PBXBuildFile; fileRef = 66E3C8B935B131BD9DD8AA5D; };
+341A23172ABB4C37889867CA = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/TotalMixSnapshotTouch/OSC/OSCManager.swift"; sourceTree = SOURCE_ROOT; };
+32D8E1F9499B3AB05159DB2E = { isa = PBXBuildFile; fileRef = 341A23172ABB4C37889867CA; };
+BDA465D76DFD4FC9F22EFB6A = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/TotalMixSnapshotTouch/OSC/OSCMessage.swift"; sourceTree = SOURCE_ROOT; };
+9530309C50710BB888234E23 = { isa = PBXBuildFile; fileRef = BDA465D76DFD4FC9F22EFB6A; };
+D06C388DACC2C50FE27EC336 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/TotalMixSnapshotTouch/Persistence/AppSettings.swift"; sourceTree = SOURCE_ROOT; };
+C12A64C030171ADAF96863EB = { isa = PBXBuildFile; fileRef = D06C388DACC2C50FE27EC336; };
+0D98C1FC0DAA74C5C39EB518 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/TotalMixSnapshotTouch/TotalMixSnapshotTouchApp.swift"; sourceTree = SOURCE_ROOT; };
+A534CC395841F31C944512D0 = { isa = PBXBuildFile; fileRef = 0D98C1FC0DAA74C5C39EB518; };
+C999A5EE04A226EB19DA8598 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/TotalMixSnapshotTouch/Views/MainView.swift"; sourceTree = SOURCE_ROOT; };
+A84AC430CFAAB3BF8F8A7EB9 = { isa = PBXBuildFile; fileRef = C999A5EE04A226EB19DA8598; };
+D2620B6B58CAC13E27CBBCCA = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/TotalMixSnapshotTouch/Views/MonitorControlsView.swift"; sourceTree = SOURCE_ROOT; };
+A2D6413DF8F71BDCA0DF8501 = { isa = PBXBuildFile; fileRef = D2620B6B58CAC13E27CBBCCA; };
+2FF706E49C079BFD457D8622 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/TotalMixSnapshotTouch/Views/SettingsView.swift"; sourceTree = SOURCE_ROOT; };
+1FF38BCF497E5254657112CA = { isa = PBXBuildFile; fileRef = 2FF706E49C079BFD457D8622; };
+9733EADB5BEE28F0050EF8D8 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/TotalMixSnapshotTouch/Views/SnapshotButton.swift"; sourceTree = SOURCE_ROOT; };
+B3AB8E04C38451FA65585504 = { isa = PBXBuildFile; fileRef = 9733EADB5BEE28F0050EF8D8; };
+F8995BA5891B07E328C60D6B = { isa = PBXFileReference; lastKnownFileType = image.icns; path = Resources/AppIcon.icns; sourceTree = SOURCE_ROOT; };
+581EDE80777EF9B20741F33B = { isa = PBXBuildFile; fileRef = F8995BA5891B07E328C60D6B; };
+0189424A5A60FED329FA868E = { isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (581EDE80777EF9B20741F33B,); runOnlyForDeploymentPostprocessing = 0; };
+38A007151ABE87CC01A5B6E9 = { isa = PBXFileReference; explicitFileType = wrapper.application; path = TotalMixSnapshotTouch.app; sourceTree = BUILT_PRODUCTS_DIR; };
+FBDC4F23F93125BBEEAE800C = { isa = PBXGroup; children = (38A007151ABE87CC01A5B6E9,); name = Products; sourceTree = "<group>"; };
+B28B7AF69320201D1CF206EB = { isa = PBXGroup; children = (A6046127813F3E45B0D45826,66E3C8B935B131BD9DD8AA5D,341A23172ABB4C37889867CA,BDA465D76DFD4FC9F22EFB6A,D06C388DACC2C50FE27EC336,0D98C1FC0DAA74C5C39EB518,C999A5EE04A226EB19DA8598,D2620B6B58CAC13E27CBBCCA,2FF706E49C079BFD457D8622,9733EADB5BEE28F0050EF8D8,F8995BA5891B07E328C60D6B,FBDC4F23F93125BBEEAE800C,); sourceTree = "<group>"; };
+BCE16DD0260827ECF338C787 = { isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (78DE721A7360760D7366F4C5,CAE5A756ED96D5797509A5B7,32D8E1F9499B3AB05159DB2E,9530309C50710BB888234E23,C12A64C030171ADAF96863EB,A534CC395841F31C944512D0,A84AC430CFAAB3BF8F8A7EB9,A2D6413DF8F71BDCA0DF8501,1FF38BCF497E5254657112CA,B3AB8E04C38451FA65585504,); runOnlyForDeploymentPostprocessing = 0; };
+7561BFB015D8F536760CB671 = { isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+A5A76368A6E498576C4EEF98 = { isa = XCBuildConfiguration; buildSettings = {ALWAYS_SEARCH_USER_PATHS = NO; SDKROOT = macosx; MACOSX_DEPLOYMENT_TARGET = 13.0; SWIFT_VERSION = 5.0;
+    PRODUCT_NAME = TotalMixSnapshotTouch; PRODUCT_BUNDLE_IDENTIFIER = local.seijiro.TotalMixSnapshotTouch;
+    GENERATE_INFOPLIST_FILE = YES; INFOPLIST_FILE = Resources/Info.plist; INFOPLIST_KEY_CFBundleDisplayName = "TotalMix Snapshot Touch";
+    INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
+    MARKETING_VERSION = 1.0; CURRENT_PROJECT_VERSION = 1;
+    CODE_SIGN_STYLE = Manual; CODE_SIGN_IDENTITY = "-"; ENABLE_APP_SANDBOX = NO;
+    SWIFT_EMIT_LOC_STRINGS = NO; COMBINE_HIDPI_IMAGES = YES;SWIFT_OPTIMIZATION_LEVEL = "-Onone"; DEBUG_INFORMATION_FORMAT = dwarf;}; name = Debug; };
+A5BD66D3C03A0FAF1A0386D5 = { isa = XCBuildConfiguration; buildSettings = {ALWAYS_SEARCH_USER_PATHS = NO; SDKROOT = macosx; MACOSX_DEPLOYMENT_TARGET = 13.0; SWIFT_VERSION = 5.0;
+    PRODUCT_NAME = TotalMixSnapshotTouch; PRODUCT_BUNDLE_IDENTIFIER = local.seijiro.TotalMixSnapshotTouch;
+    GENERATE_INFOPLIST_FILE = YES; INFOPLIST_FILE = Resources/Info.plist; INFOPLIST_KEY_CFBundleDisplayName = "TotalMix Snapshot Touch";
+    INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
+    MARKETING_VERSION = 1.0; CURRENT_PROJECT_VERSION = 1;
+    CODE_SIGN_STYLE = Manual; CODE_SIGN_IDENTITY = "-"; ENABLE_APP_SANDBOX = NO;
+    SWIFT_EMIT_LOC_STRINGS = NO; COMBINE_HIDPI_IMAGES = YES;SWIFT_OPTIMIZATION_LEVEL = "-O"; DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";}; name = Release; };
+5FB66943637FEB59E5652D81 = { isa = XCConfigurationList; buildConfigurations = (A5A76368A6E498576C4EEF98,A5BD66D3C03A0FAF1A0386D5,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+0E8A3AD980EC179856012B7E = { isa = PBXNativeTarget; buildConfigurationList = 5FB66943637FEB59E5652D81; buildPhases = (BCE16DD0260827ECF338C787,7561BFB015D8F536760CB671,0189424A5A60FED329FA868E,); buildRules = (); dependencies = (); name = TotalMixSnapshotTouch; productName = TotalMixSnapshotTouch; productReference = 38A007151ABE87CC01A5B6E9; productType = "com.apple.product-type.application"; };
+98F54143AB4E86B28C3AFEE0 = { isa = PBXProject; attributes = {LastUpgradeCheck = 2600;}; buildConfigurationList = 5FB66943637FEB59E5652D81; compatibilityVersion = "Xcode 14.0"; developmentRegion = ja; hasScannedForEncodings = 0; knownRegions = (ja,en,Base,); mainGroup = B28B7AF69320201D1CF206EB; productRefGroup = FBDC4F23F93125BBEEAE800C; projectDirPath = ""; projectRoot = ""; targets = (0E8A3AD980EC179856012B7E,); };
+}; rootObject = 98F54143AB4E86B28C3AFEE0;}
