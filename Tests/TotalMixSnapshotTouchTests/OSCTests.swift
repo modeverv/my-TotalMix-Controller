@@ -57,6 +57,8 @@ final class OSCTests: XCTestCase {
             }
             return result
         }
+        XCTAssertFalse(manager.recallSnapshot(1))
+        XCTAssertNil(manager.lastSentSnapshot)
         manager.setMainVolume(1, force: true)
         manager.toggleDim(); manager.toggleMuteGroup1()
         XCTAssertEqual(outgoing().map(\.address), ["/3"])
@@ -78,12 +80,34 @@ final class OSCTests: XCTestCase {
         XCTAssertTrue(manager.connected)
         XCTAssertEqual(manager.dim, false); XCTAssertEqual(manager.muteGroup1, true)
         XCTAssertEqual(manager.mainVolume ?? 0, 0.4, accuracy: 0.0001)
+        // Check every actual UDP packet, including value 1.0 and reverse row mapping.
+        for number in 1...8 { XCTAssertTrue(manager.recallSnapshot(number)) }
+        let snapshots = outgoing()
+        XCTAssertEqual(snapshots.map(\.address), [
+            "/3/snapshots/8/1", "/3/snapshots/7/1", "/3/snapshots/6/1", "/3/snapshots/5/1",
+            "/3/snapshots/4/1", "/3/snapshots/3/1", "/3/snapshots/2/1", "/3/snapshots/1/1"
+        ])
+        XCTAssertTrue(snapshots.allSatisfy { $0.value == .float(1) })
+        XCTAssertEqual(manager.lastSentSnapshot, 8)
+        XCTAssertNotNil(manager.lastSentDate)
+        settings.setHidden(true, for: 2)
+        XCTAssertFalse(manager.recallSnapshot(2))
+        XCTAssertFalse(manager.recallSnapshot(0))
+        XCTAssertFalse(manager.recallSnapshot(9))
+        XCTAssertTrue(outgoing().isEmpty)
+        XCTAssertEqual(manager.lastSentSnapshot, 8)
+        // Snapshot feedback alone must not overwrite the meaning of last-sent state.
+        feedback("/3/snapshots/8/1", 1)
+        try await Task.sleep(nanoseconds: 50_000_000)
+        XCTAssertEqual(manager.lastSentSnapshot, 8)
         manager.toggleDim(); manager.toggleDim() // No double toggle before feedback.
         manager.toggleMuteGroup1(); manager.setMainVolume(0.3, force: true)
         XCTAssertEqual(outgoing().map(\.address), ["/1/mainDim", "/3/muteGroups/4/1", "/1/mastervolume"])
         XCTAssertEqual(manager.dim, false) // Never invent an acknowledged ON state.
         manager.reconnect()
         XCTAssertNil(manager.errorMessage)
+        XCTAssertNil(manager.lastSentSnapshot)
+        XCTAssertNil(manager.lastSentDate)
         XCTAssertFalse(manager.connected)
         feedback("/1/mastervolume", 0.3)
         try await Task.sleep(nanoseconds: 100_000_000)
@@ -91,6 +115,8 @@ final class OSCTests: XCTestCase {
         try await Task.sleep(nanoseconds: 4_800_000_000)
         XCTAssertFalse(manager.connected)
         XCTAssertFalse(manager.canAdjustVolume)
+        XCTAssertFalse(manager.recallSnapshot(1))
         settings.oscEnabled = false; manager.reconnect()
+        XCTAssertFalse(manager.recallSnapshot(1))
     }
 }

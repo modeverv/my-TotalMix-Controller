@@ -23,7 +23,6 @@ RME TotalMix FXを、大きなボタンとフェーダーで操作するmacOSア
 
 - macOS 13以降
 - RME TotalMix FXと対応オーディオインターフェース
-- Snapshot用のIAC MIDIバス
 - ソースからビルドする場合はXcode
 - iPadで操作する場合は、OpenDisplayなどでタッチをMacのクリックとして渡せる環境
 
@@ -43,32 +42,15 @@ make run
 build/Build/Products/Release/TotalMixSnapshotTouch.app
 ```
 
-生成された`.app`を丸ごとコピーすれば、ソースやビルドフォルダを同梱せずに使えます。同じMac内で移動しても設定は保持されます。別のMacではCPUアーキテクチャの適合に加え、下記のIAC・TotalMix設定が必要です。設定データは自動では移りません。
+生成された`.app`を丸ごとコピーすれば、ソースやビルドフォルダを同梱せずに使えます。同じMac内で移動しても設定は保持されます。別のMacではCPUアーキテクチャの適合に加え、下記のTotalMix OSC設定が必要です。設定データは自動では移りません。
 
 アプリはローカル実行用のアドホック署名です。Developer ID署名・公証は行っていないため、別のMacへの配布ではGatekeeperにより起動が制限されることがあります。
 
 ## セットアップ
 
-SnapshotはCoreMIDI、M1・F1・Dimは同じMac内のOSC（UDP、`127.0.0.1`）で通信します。外部ライブラリやインターネット接続は不要です。アプリはAppleScript、Accessibility API、TotalMixのUI自動操作を使用しません。
+すべての操作を同じMac内のOSC（UDP、`127.0.0.1`）で行います。IACバスやMIDI設定は不要です。外部ライブラリやインターネット接続は不要です。アプリはAppleScript、Accessibility API、TotalMixのUI自動操作を使用しません。
 
-### 1. Snapshot用のIACバス
-
-macOSの「Audio MIDI設定」→「MIDIスタジオ」→「IAC Driver」で、`TotalMixRemote`というバスを作成し、デバイスをオンラインにします。
-
-TotalMix FXで以下を設定します。
-
-| 場所 | 設定 |
-| --- | --- |
-| Options | Enable MIDI Control: **ON** |
-| Mixer Settings → MIDI | Select Controller: **1**、In Use: **ON** |
-| Input Port | **IAC TotalMixRemote** |
-| Output Port | **None** |
-| Enable Protocol Support | **ON** |
-| Disable MIDI in background | **OFF** |
-
-アプリは保存済みのMIDI Unique IDを優先し、見つからなければ名前に`TotalMixRemote`を含む出力先を探します。設定画面から出力先を手動選択・再検索することもできます。
-
-### 2. M1・F1・Dim用のOSC
+### 1. OSC接続
 
 TotalMixのOptions → **Enable OSC ControlをON**にし、Mixer Settings → OSCで次のように設定します。
 
@@ -85,16 +67,20 @@ Global OSCモードは対象外です。実機確認にはTotalMix 1.90互換モ
 
 アプリの「設定」も、送信先を7001、受信を9001にします。変更後は「ポート設定を適用・再接続」を押してください。アプリの接続先・受信アドレスは`127.0.0.1`固定です。
 
-![MIDI出力先とOSCポートの設定画面](docs/screenshots/settings-connection.png)
+![OSC接続設定画面](docs/screenshots/settings-connection.png)
 
 他のOSCリモコンと併用する場合は、専用Controllerと別のポートを用意し、両端を一致させてください。同じ受信ポートを使う本アプリを複数起動することはできません。
 
-### 3. TotalMixのグループ
+### 2. TotalMixのグループ
 
 - **M1**：ミュート対象のチャンネルをMute Group 1に登録します。
 - **F1**：Hardware Outputsの**Main（AN1/2）とAN3/4**をFader Group 1に登録し、グループを有効にします。
 
 F1のフェーダーと0 dBボタンはMainを操作し、他のチャンネルへの連動はTotalMixが行います。F1が無効ならMainだけが変わります。他のチャンネル構成を使う場合は、この前提を見直してください。
+
+### 既存のMIDI版からの移行
+
+更新したアプリを起動すれば、表示名・HIDE・OSCポート設定をそのまま引き継ぎます。MIDI出力先と送信方式の設定は使用しません。IACバスやTotalMixの既存MIDI設定はアプリから削除・変更しないため、他の用途で引き続き利用できます。
 
 ## 日常の操作
 
@@ -125,18 +111,16 @@ F1のフェーダーと0 dBボタンはMainを操作し、他のチャンネル�
 | --- | --- |
 | Snapshotの強調・チェック | **最後にこのアプリから送信したSnapshot**。TotalMixの現在のSnapshotとは同期しない |
 | M1・DimのON/OFF、F1のdB表示 | **OSCで受信したTotalMixの状態** |
-| MIDIの接続表示 | 出力先が利用可能。TotalMix側での適用成功を保証するものではない |
+| OSCの接続表示 | TotalMixから最近の応答を受信している。各Snapshotコマンドの適用完了を保証する表示ではない |
 
-Snapshotの強調は再起動や出力先変更でクリアされます。TotalMix本体や別のコントローラーからSnapshotを変更しても、この強調は追従しません。
+Snapshotの強調は再起動・再接続・応答タイムアウトでクリアされます。TotalMix本体や別のコントローラーからSnapshotを変更しても、この強調は追従しません。
 
 ## トラブルシューティング
 
 | 症状 | 確認すること |
 | --- | --- |
-| Snapshotボタンが無効 | IAC Driverがオンラインか、設定でMIDI出力先を選択できるか |
-| MIDI接続済みだが切り替わらない | TotalMixのEnable MIDI Control、In Use、Enable Protocol Support。必要なら送信方式を「Note On / Velocity 0（互換）」へ |
-| 背面のTotalMixが反応しない | Disable MIDI in backgroundをOFFにする |
-| M1・F1・Dimが応答待ち | Enable OSC Control、In Use、Host、送信／受信ポート、従来OSCモードを確認し再接続 |
+| Snapshotやモニター操作が無効・応答待ち | OSCを使用がONか、TotalMixのEnable OSC Control、In Use、Host、ポート、従来OSCモードを確認し再接続 |
+| 特定のSnapshotが表示されない | 設定のHIDEを確認 |
 | OSC受信ポートを開けない | 別の本アプリやOSCツールが同じポートを使っていないか |
 | Mainだけ音量が変わる | TotalMixのF1メンバーと有効状態を確認 |
 
@@ -149,14 +133,15 @@ make project  # ソース一覧からXcodeプロジェクトを再生成（Pytho
 make icon     # Swift/AppKitでアイコンを再生成
 ```
 
-自動テストは実機IACへ送信せず、テスト専用のMIDI受信先とローカルUDPポートを使います。MIDIのNote番号・送信方式、出力先選択、設定保存、切断処理、OSCパケット、状態受信、応答前の送信防止、二重トグル防止、再接続・タイムアウトを検証します。
+自動テストはテスト専用のローカルUDPポートを使い、実機TotalMixへ送信しません。全8個のSnapshotのアドレスと送信値、HIDE・不正番号・未接続時の送信抑止、既存設定の引き継ぎ、OSCパケット、状態受信、応答前の音量送信防止、二重トグル防止、再接続・タイムアウトを検証します。
 
 2026-09-07時点の確認結果：
 
-- Releaseビルド成功、自動テスト6件合格。
-- Snapshot 1〜8、TotalMixが背面での切り替え、OpenDisplay/iPadタッチはユーザー確認済み。
+- OSC統一版のReleaseビルド成功、自動テスト4件合格。実行ファイルのCoreMIDIリンクがないことも確認。
+- OSC統一版でSnapshot 1のボタン操作と7の数字キー操作を確認し、背面のTotalMixの選択表示でも切り替えを確認。全8個のコマンドはUDP送信テストで検証。
+- 初期MIDI版ではSnapshot 1〜8とOpenDisplay/iPadタッチをユーザー確認済み。OSC統一版のiPad操作は今回の実機確認には含めていない。
 - HIDEの保存・再表示・数字キー無効化、フルスクリーンは実画面で確認。
-- M1・DimのON/OFFと状態受信を実機確認。
+- OSC統一後もM1・Dim・フェーダー・0 dBボタンの実機動作を確認。OSC無効時の全操作停止と再接続も確認。
 - F1操作でMainとAN3/4が同じ量だけ変化し、14 dBの差を維持することを実機確認。
 - F1 0 dBボタンでTotalMixから0.0 dBが返ることを確認。
 - 追加したモニター操作パネルのiPadでのタッチ感は、ユーザーによる最終確認対象。
@@ -167,7 +152,6 @@ make icon     # Swift/AppKitでアイコンを再生成
 Sources/TotalMixSnapshotTouch/
   TotalMixSnapshotTouchApp.swift
   Models/Snapshot.swift
-  MIDI/MIDIManager.swift
   OSC/OSCMessage.swift
   OSC/OSCManager.swift
   Persistence/AppSettings.swift
@@ -185,10 +169,10 @@ docs/screenshots/            # 実アプリのスクリーンショット
 
 ### 通信仕様・参考資料
 
-SnapshotはMIDI Channel 1、Note 54〜61、Velocity 0のNote Off（例：Snapshot 1 = `80 36 00`）を送信します。互換方式では先頭バイトが`90`になります。
+Snapshot nは`/3/snapshots/{9-n}/1`にFloatの`1.0`を送信します。Snapshot 1は`/3/snapshots/8/1`、Snapshot 8は`/3/snapshots/1/1`です。送信成功時だけ「最後に送信」を更新します。TotalMixからのSnapshotフィードバックでこの表示を上書きしません。
 
 OSCは`/3/muteGroups/4/1`、`/1/mainDim`、`/1/mastervolume`とそのdB表示を使用します。ページ要求`/3`・`/1`で状態を再取得し、トグル操作は1.0を一度だけ送信します。0 dBはOSCフェーダー値の約0.8172に相当し、1.0（+6 dB）とは異なります。
 
 - [RME公式OSCテーブル](https://rme-audio.de/downloads/osc_table_totalmix_new.zip)
 - [Fireface UCX IIユーザーガイド](https://rme-audio.de/downloads/fface_ucx2_e.pdf)
-- [初期実装の引き継ぎ仕様](TotalMix_Snapshot_Touch_HANDOFF.md) — Snapshot専用MVPの当初仕様。HIDE・OSC・モニター操作など追加機能の現行仕様は本READMEを参照してください。
+- [初期実装の引き継ぎ仕様](TotalMix_Snapshot_Touch_HANDOFF.md) — MIDIを使用したSnapshot専用MVPの当初仕様です。OSC統一後の現行仕様は本READMEを参照してください。

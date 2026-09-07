@@ -2,7 +2,6 @@ import SwiftUI
 
 struct SettingsView: View {
     @EnvironmentObject private var settings: AppSettings
-    @EnvironmentObject private var midi: MIDIManager
     @EnvironmentObject private var osc: OSCManager
     @Environment(\.dismiss) private var dismiss
     var body: some View {
@@ -13,26 +12,7 @@ struct SettingsView: View {
                 Button("完了") { dismiss() }.keyboardShortcut(.defaultAction)
             }.padding(24)
             Form {
-                Section("MIDI出力先") {
-                    Picker("Destination", selection: Binding<UInt32>(
-                        get: { midi.selectedDestination?.endpoint ?? 0 },
-                        set: { endpoint in
-                            if let destination = midi.destinations.first(where: { $0.endpoint == endpoint }) { midi.selectDestination(destination) }
-                        }
-                    )) {
-                        Text("未接続 / 出力先を選択").tag(UInt32(0))
-                        ForEach(midi.destinations) { destination in
-                            Text(destination.displayName).tag(destination.endpoint)
-                        }
-                    }
-                    Button("MIDI出力先を再検索", systemImage: "arrow.clockwise") { midi.refreshDestinations() }
-                    Picker("送信方式", selection: $settings.encoding) {
-                        ForEach(SnapshotCommand.Encoding.allCases) { encoding in Text(encoding.title).tag(encoding) }
-                    }
-                    Text("通常はNote Offを使用します。反応しない場合のみ互換方式を試してください。")
-                        .font(.caption).foregroundStyle(.secondary)
-                }
-                Section("M1・F1・Dim（OSC）") {
+                Section("接続（すべての操作にOSCを使用）") {
                     Toggle("OSCを使用", isOn: $settings.oscEnabled)
                         .onChange(of: settings.oscEnabled) { _ in osc.reconnect() }
                     TextField("TotalMixのIncomingポート", value: $settings.oscSendPort, format: .number.grouping(.never))
@@ -63,10 +43,7 @@ struct SettingsView: View {
                     Text("HIDEをオンにするとボタンと数字キー操作を無効にします。変更は自動保存され、オフにすると再表示できます。TotalMix側のSnapshotは変更しません。")
                         .font(.caption).foregroundStyle(.secondary)
                 }
-                Section("TotalMix側の設定") {
-                    Text("Enable MIDI Control: ON\nIn Use: ON / Input: IAC TotalMixRemote\nEnable Protocol Support: ON\nDisable MIDI in background: OFF\nOutput Port: None")
-                        .font(.caption).textSelection(.enabled)
-                }
+
             }.formStyle(.grouped)
         }
         .frame(width: 580, height: 680)

@@ -18,15 +18,6 @@ final class AppSettings: ObservableObject {
         else { hiddenSnapshots.remove(number) }
         defaults.set(hiddenSnapshots.sorted(), forKey: "hiddenSnapshots")
     }
-    @Published var destinationID: Int32? {
-        didSet {
-            if let destinationID { defaults.set(Int(destinationID), forKey: "destinationUniqueID") }
-            else { defaults.removeObject(forKey: "destinationUniqueID") }
-        }
-    }
-    @Published var encoding: SnapshotCommand.Encoding {
-        didSet { defaults.set(encoding.rawValue, forKey: "midiEncoding") }
-    }
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         oscEnabled = defaults.object(forKey: "oscEnabled") as? Bool ?? true
@@ -38,8 +29,6 @@ final class AppSettings: ObservableObject {
             .filter { SnapshotCommand.numbers.contains($0) })
         let stored = defaults.stringArray(forKey: "snapshotNames") ?? []
         snapshotNames = SnapshotCommand.numbers.map { stored.indices.contains($0 - 1) ? stored[$0 - 1] : "Snapshot \($0)" }
-        destinationID = (defaults.object(forKey: "destinationUniqueID") as? NSNumber)?.int32Value
-        encoding = SnapshotCommand.Encoding(rawValue: defaults.string(forKey: "midiEncoding") ?? "") ?? .noteOff
     }
     func name(for number: Int) -> String {
         guard snapshotNames.indices.contains(number - 1) else { return "" }

@@ -5,6 +5,8 @@ import Darwin
 /// One local TotalMix OSC controller, with state feedback. No Internet/LAN endpoint is used.
 @MainActor
 final class OSCManager: ObservableObject {
+    @Published private(set) var lastSentSnapshot: Int?
+    @Published private(set) var lastSentDate: Date?
     @Published private(set) var muteGroup1: Bool?
     @Published private(set) var dim: Bool?
     @Published private(set) var mainVolume: Double?
@@ -70,6 +72,7 @@ final class OSCManager: ObservableObject {
         }
     }
     private func resetFeedback() {
+        lastSentSnapshot = nil; lastSentDate = nil
         connected = false; muteGroup1 = nil; dim = nil; mainVolume = nil
         volumeLabel = "— dB"; pendingMute = false; pendingDim = false
         lastFeedback = .distantPast; lastVolumeFeedback = .distantPast
@@ -87,6 +90,15 @@ final class OSCManager: ObservableObject {
     private func requestPage() {
         page = page == 1 ? 3 : 1
         send("/\(page)", value: 0)
+    }
+    @discardableResult
+    func recallSnapshot(_ number: Int) -> Bool {
+        guard connected, !settings.hiddenSnapshots.contains(number),
+              let address = SnapshotCommand.address(for: number) else { return false }
+        guard send(address, value: 1) else { return false }
+        lastSentSnapshot = number
+        lastSentDate = Date()
+        return true
     }
     func toggleMuteGroup1() {
         guard connected, muteGroup1 != nil, !pendingMute else { return }
