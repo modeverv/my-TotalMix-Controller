@@ -20,12 +20,12 @@ final class OSCTests: XCTestCase {
     }
     @MainActor
     func testFeedbackControlsReconnectAndTimeout() async throws {
-        func bindSocket() throws -> (Int32, Int) {
+        func bindSocket(host: String = "127.0.0.1") throws -> (Int32, Int) {
             let fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
             var address = sockaddr_in()
             address.sin_len = UInt8(MemoryLayout<sockaddr_in>.size)
             address.sin_family = sa_family_t(AF_INET)
-            address.sin_addr.s_addr = inet_addr("127.0.0.1")
+            address.sin_addr.s_addr = inet_addr(host)
             let result = withUnsafePointer(to: &address) { p in
                 p.withMemoryRebound(to: sockaddr.self, capacity: 1) { Darwin.bind(fd, $0, socklen_t(MemoryLayout<sockaddr_in>.size)) }
             }
@@ -46,6 +46,11 @@ final class OSCTests: XCTestCase {
         defer { defaults.removePersistentDomain(forName: suite) }
         let settings = AppSettings(defaults: defaults)
         settings.oscSendPort = sendPort; settings.oscReceivePort = receivePort
+        #if os(macOS)
+        settings.oscHost = "198.51.100.1" // Mac remains loopback-only, even with an imported iOS setting.
+        #else
+        settings.oscHost = "127.0.0.1"
+        #endif
         let manager = OSCManager(settings: settings)
         XCTAssertFalse(manager.canAdjustVolume)
         XCTAssertNil(manager.currentSnapshot)
@@ -64,7 +69,7 @@ final class OSCTests: XCTestCase {
         manager.setMainVolume(1, force: true)
         manager.toggleDim(); manager.toggleMuteGroup1()
         XCTAssertEqual(outgoing().map(\.address), ["/3"])
-        func feedback(_ path: String, _ value: Float) {
+        func feedback(_ path: String, _ value: Float, sender: Int32? = nil) {
             var target = sockaddr_in()
             target.sin_len = UInt8(MemoryLayout<sockaddr_in>.size)
             target.sin_family = sa_family_t(AF_INET)
@@ -73,9 +78,42 @@ final class OSCTests: XCTestCase {
             let data = OSCMessage.encode(path, value: value)
             _ = data.withUnsafeBytes { b in withUnsafePointer(to: &target) { p in
                 p.withMemoryRebound(to: sockaddr.self, capacity: 1) {
-                    sendto(server, b.baseAddress, b.count, 0, $0, socklen_t(MemoryLayout<sockaddr_in>.size))
+                    sendto(sender ?? server, b.baseAddress, b.count, 0, $0, socklen_t(MemoryLayout<sockaddr_in>.size))
                 }
             }}
+        }
+        // Invalid values on known paths must not count as a successful connection.
+        feedback("/1/mainDim", 0.5)
+        feedback("/3/muteGroups/4/1", 2)
+        feedback("/1/mastervolume", 2)
+        feedback("/1/mastervolumeVal", 1)
+        feedback("/unknown", 1)
+        try await Task.sleep(nanoseconds: 50_000_000)
+        XCTAssertFalse(manager.connected)
+        XCTAssertNil(manager.dim)
+        XCTAssertNil(manager.muteGroup1)
+        // Exercise source filtering through a real datagram, using another local interface.
+        var interfaces: UnsafeMutablePointer<ifaddrs>?
+        if getifaddrs(&interfaces) == 0 {
+            defer { freeifaddrs(interfaces) }
+            var item = interfaces
+            while let interface = item {
+                defer { item = interface.pointee.ifa_next }
+                guard let address = interface.pointee.ifa_addr,
+                      address.pointee.sa_family == sa_family_t(AF_INET) else { continue }
+                var localAddress = UnsafeRawPointer(address).assumingMemoryBound(to: sockaddr_in.self).pointee.sin_addr
+                guard UInt32(bigEndian: localAddress.s_addr) >> 24 != 127,
+                      localAddress.s_addr != INADDR_ANY else { continue }
+                var text = [CChar](repeating: 0, count: Int(INET_ADDRSTRLEN))
+                guard inet_ntop(AF_INET, &localAddress, &text, socklen_t(INET_ADDRSTRLEN)) != nil else { continue }
+                let (unexpectedSender, _) = try bindSocket(host: String(cString: text))
+                feedback("/1/mainDim", 1, sender: unexpectedSender)
+                try await Task.sleep(nanoseconds: 50_000_000)
+                close(unexpectedSender)
+                XCTAssertFalse(manager.connected)
+                XCTAssertNil(manager.dim)
+                break
+            }
         }
         feedback("/1/mainDim", 0); feedback("/3/muteGroups/4/1", 1); feedback("/1/mastervolume", 0.4)
         try await Task.sleep(nanoseconds: 100_000_000)
@@ -128,6 +166,12 @@ final class OSCTests: XCTestCase {
         XCTAssertNil(manager.currentSnapshot)
         XCTAssertFalse(manager.snapshotStateKnown)
         XCTAssertFalse(manager.connected)
+        // Cancellation closes the old UDP descriptor before the new same-port socket opens.
+        try await Task.sleep(nanoseconds: 50_000_000)
+        XCTAssertNil(manager.errorMessage)
+        let reconnectionPackets = outgoing()
+        XCTAssertTrue(reconnectionPackets.allSatisfy { $0.address == "/1" || $0.address == "/3" })
+        XCTAssertFalse(reconnectionPackets.isEmpty)
         feedback("/1/mastervolume", 0.3)
         feedback("/3/snapshots/2/1", 1)
         try await Task.sleep(nanoseconds: 100_000_000)
@@ -139,6 +183,23 @@ final class OSCTests: XCTestCase {
         XCTAssertNil(manager.currentSnapshot)
         XCTAssertFalse(manager.snapshotStateKnown)
         XCTAssertFalse(manager.recallSnapshot(1))
+        // Backgrounding clears all previously confirmed controls and never resends their values.
+        manager.disconnect()
+        XCTAssertNil(manager.mainVolume)
+        XCTAssertNil(manager.dim)
+        XCTAssertNil(manager.muteGroup1)
+        XCTAssertNil(manager.currentSnapshot)
+        manager.setMainVolume(1, force: true)
+        manager.toggleDim(); manager.toggleMuteGroup1()
+        _ = outgoing() // Drain page requests sent before disconnect.
+        try await Task.sleep(nanoseconds: 750_000_000)
+        XCTAssertTrue(outgoing().isEmpty)
+        manager.reconnect(); manager.disconnect(); manager.reconnect()
+        try await Task.sleep(nanoseconds: 100_000_000)
+        XCTAssertNil(manager.errorMessage)
+        XCTAssertFalse(manager.connected)
+        XCTAssertNil(manager.mainVolume)
+        XCTAssertTrue(outgoing().allSatisfy { $0.address == "/1" || $0.address == "/3" })
         settings.oscEnabled = false; manager.reconnect()
         XCTAssertFalse(manager.recallSnapshot(1))
     }

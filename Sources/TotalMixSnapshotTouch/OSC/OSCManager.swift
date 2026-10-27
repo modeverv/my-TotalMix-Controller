@@ -2,7 +2,7 @@ import Foundation
 import Combine
 import Darwin
 
-/// One local TotalMix OSC controller, with state feedback. No Internet/LAN endpoint is used.
+/// Feedback-driven TotalMix OSC controller: loopback on Mac, configured IPv4 host on iOS.
 @MainActor
 final class OSCManager: ObservableObject {
     @Published private(set) var currentSnapshot: Int?
@@ -20,6 +20,8 @@ final class OSCManager: ObservableObject {
     private var socketFD: Int32 = -1
     private var reader: DispatchSourceRead?
     private var timer: Timer?
+    private var closingSocket = false
+    private var pendingReconnect = false
     private var lastSnapshotFeedback = Date.distantPast
     private var lastFeedback = Date.distantPast
     private var lastVolumeFeedback = Date.distantPast
@@ -34,15 +36,61 @@ final class OSCManager: ObservableObject {
     var canAdjustVolume: Bool { connected && mainVolume != nil }
 
     init(settings: AppSettings) { self.settings = settings; reconnect() }
-    deinit { timer?.invalidate(); reader?.cancel(); if socketFD >= 0 { Darwin.close(socketFD) } }
+    deinit { timer?.invalidate(); reader?.cancel() }
 
     func reconnect() {
+        disconnect()
+        pendingReconnect = true
+        if !closingSocket { pendingReconnect = false; openSocket() }
+    }
+
+    /// Forget live mixer state when the app leaves the foreground. Nothing is restored on resume.
+    func disconnect() {
+        pendingReconnect = false
         timer?.invalidate(); timer = nil
-        reader?.cancel(); reader = nil
-        if socketFD >= 0 { Darwin.close(socketFD) }; socketFD = -1
+        if let source = reader {
+            let oldFD = socketFD
+            reader = nil; socketFD = -1
+            closingSocket = true
+            // Dispatch owns the descriptor until cancellation has completed. Opening the new
+            // socket afterward also prevents a same-port reconnect from failing spuriously.
+            source.setCancelHandler { [weak self] in
+                Darwin.close(oldFD)
+                Task { @MainActor [weak self] in
+                    guard let self else { return }
+                    self.closingSocket = false
+                    if self.pendingReconnect {
+                        self.pendingReconnect = false
+                        self.openSocket()
+                    }
+                }
+            }
+            source.cancel()
+        }
         resetFeedback()
         errorMessage = nil
+    }
+
+    /// Only literal unicast IPv4 addresses are accepted; no DNS lookup blocks the UI.
+    static func ipv4Address(for host: String) -> in_addr? {
+        var address = in_addr()
+        guard inet_pton(AF_INET, host.trimmingCharacters(in: .whitespacesAndNewlines), &address) == 1 else { return nil }
+        let firstOctet = UInt32(bigEndian: address.s_addr) >> 24
+        guard firstOctet > 0, firstOctet < 224 else { return nil }
+        return address
+    }
+
+    private func openSocket() {
         guard settings.oscEnabled else { return }
+        #if os(iOS)
+        let host = settings.oscHost
+        #else
+        // Existing Mac installs retain their original loopback-only behavior.
+        let host = "127.0.0.1"
+        #endif
+        guard let remoteAddress = Self.ipv4Address(for: host) else {
+            errorMessage = "TotalMixが動いているMacのIPv4アドレスを設定してください。"; return
+        }
         guard (1024...65535).contains(settings.oscSendPort), (1024...65535).contains(settings.oscReceivePort), settings.oscSendPort != settings.oscReceivePort else {
             errorMessage = "異なる送信・受信ポートを1024〜65535で指定してください。"; return
         }
@@ -52,7 +100,11 @@ final class OSCManager: ObservableObject {
         local.sin_len = UInt8(MemoryLayout<sockaddr_in>.size)
         local.sin_family = sa_family_t(AF_INET)
         local.sin_port = UInt16(settings.oscReceivePort).bigEndian
+        #if os(iOS)
+        local.sin_addr.s_addr = INADDR_ANY
+        #else
         local.sin_addr.s_addr = inet_addr("127.0.0.1")
+        #endif
         let result = withUnsafePointer(to: &local) {
             $0.withMemoryRebound(to: sockaddr.self, capacity: 1) { Darwin.bind(fd, $0, socklen_t(MemoryLayout<sockaddr_in>.size)) }
         }
@@ -63,16 +115,24 @@ final class OSCManager: ObservableObject {
         }
         _ = fcntl(fd, F_SETFL, O_NONBLOCK)
         destination = local
+        destination.sin_addr = remoteAddress
         destination.sin_port = UInt16(settings.oscSendPort).bigEndian
         socketFD = fd
         let source = DispatchSource.makeReadSource(fileDescriptor: fd, queue: .main)
-        source.setEventHandler { [weak self] in self?.receive() }
+        source.setEventHandler { [weak self] in
+            guard let self, self.socketFD == fd else { return }
+            self.receive()
+        }
+        source.setCancelHandler { Darwin.close(fd) }
         reader = source; source.resume()
         // Page requests contain no mixer command and never restore a previous volume.
         requestPage()
-        timer = Timer.scheduledTimer(withTimeInterval: 0.65, repeats: true) { [weak self] _ in
+        let feedbackTimer = Timer(timeInterval: 0.65, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.tick() }
         }
+        timer = feedbackTimer
+        // Scrolling or dragging an iPhone fader must not pause feedback expiry checks.
+        RunLoop.main.add(feedbackTimer, forMode: .common)
     }
     private func resetFeedback() {
         currentSnapshot = nil; snapshotStateKnown = false; lastSnapshotFeedback = .distantPast
@@ -81,6 +141,7 @@ final class OSCManager: ObservableObject {
         volumeLabel = "— dB"; pendingMute = false; pendingDim = false
         lastFeedback = .distantPast; lastVolumeFeedback = .distantPast
         lastMuteFeedback = .distantPast; lastDimFeedback = .distantPast
+        lastVolumeSend = .distantPast; muteSent = .distantPast; dimSent = .distantPast
     }
     private func tick() {
         if Date().timeIntervalSince(lastFeedback) > 4 { resetFeedback() }
@@ -144,7 +205,7 @@ final class OSCManager: ObservableObject {
     private func receive() {
         guard socketFD >= 0 else { return }
         var bytes = [UInt8](repeating: 0, count: 65535)
-        // Keep UI responsive even if a sender floods this local port.
+        // Keep UI responsive even if a sender floods this port.
         for _ in 0..<64 {
             var source = sockaddr_in()
             var length = socklen_t(MemoryLayout<sockaddr_in>.size)
@@ -154,23 +215,22 @@ final class OSCManager: ObservableObject {
                 }
             }
             guard count > 0 else { return }
-            guard source.sin_addr.s_addr == inet_addr("127.0.0.1") else { continue }
+            guard source.sin_family == sa_family_t(AF_INET),
+                  source.sin_addr.s_addr == destination.sin_addr.s_addr else { continue }
             for message in OSCMessage.decode(Data(bytes.prefix(count))) {
                 switch message.address {
                 case "/3/muteGroups/4/1":
-                    if let value = message.number {
-                        muteGroup1 = value != 0; lastMuteFeedback = Date(); pendingMute = false
-                    }
+                    guard let value = message.number, value == 0 || value == 1 else { continue }
+                    muteGroup1 = value != 0; lastMuteFeedback = Date(); pendingMute = false
                 case "/1/mainDim":
-                    if let value = message.number {
-                        dim = value != 0; lastDimFeedback = Date(); pendingDim = false
-                    }
+                    guard let value = message.number, value == 0 || value == 1 else { continue }
+                    dim = value != 0; lastDimFeedback = Date(); pendingDim = false
                 case "/1/mastervolume":
-                    if let value = message.number, (0...1).contains(value) {
-                        mainVolume = Double(value); lastVolumeFeedback = Date()
-                    }
+                    guard let value = message.number, (0...1).contains(value) else { continue }
+                    mainVolume = Double(value); lastVolumeFeedback = Date()
                 case "/1/mastervolumeVal":
-                    if case .string(let label) = message.value { volumeLabel = label }
+                    guard case .string(let label) = message.value else { continue }
+                    volumeLabel = label
                 default:
                     guard let number = SnapshotCommand.number(forFeedbackAddress: message.address),
                           let value = message.number, value == 0 || value == 1 else { continue }

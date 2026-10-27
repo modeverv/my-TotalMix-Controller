@@ -5,6 +5,7 @@ import Combine
 final class AppSettings: ObservableObject {
     private let defaults: UserDefaults
     @Published var oscEnabled: Bool { didSet { defaults.set(oscEnabled, forKey: "oscEnabled") } }
+    @Published var oscHost: String { didSet { defaults.set(oscHost, forKey: "oscHost") } }
     @Published var oscSendPort: Int { didSet { defaults.set(oscSendPort, forKey: "oscSendPort") } }
     @Published var oscReceivePort: Int { didSet { defaults.set(oscReceivePort, forKey: "oscReceivePort") } }
     @Published private(set) var snapshotNames: [String]
@@ -21,10 +22,20 @@ final class AppSettings: ObservableObject {
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         oscEnabled = defaults.object(forKey: "oscEnabled") as? Bool ?? true
+        #if os(iOS)
+        let defaultHost = ""
+        let defaultSendPort = 7002
+        let defaultReceivePort = 9002
+        #else
+        let defaultHost = "127.0.0.1"
+        let defaultSendPort = 7001
+        let defaultReceivePort = 9001
+        #endif
+        oscHost = defaults.string(forKey: "oscHost") ?? defaultHost
         let sendPort = defaults.integer(forKey: "oscSendPort")
         let receivePort = defaults.integer(forKey: "oscReceivePort")
-        oscSendPort = (1024...65535).contains(sendPort) ? sendPort : 7001
-        oscReceivePort = (1024...65535).contains(receivePort) ? receivePort : 9001
+        oscSendPort = (1024...65535).contains(sendPort) ? sendPort : defaultSendPort
+        oscReceivePort = (1024...65535).contains(receivePort) ? receivePort : defaultReceivePort
         hiddenSnapshots = Set((defaults.array(forKey: "hiddenSnapshots") as? [Int] ?? [])
             .filter { SnapshotCommand.numbers.contains($0) })
         let stored = defaults.stringArray(forKey: "snapshotNames") ?? []

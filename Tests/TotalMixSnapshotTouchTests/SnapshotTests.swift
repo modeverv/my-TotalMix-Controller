@@ -2,6 +2,31 @@ import XCTest
 @testable import TotalMixSnapshotTouch
 
 final class SnapshotTests: XCTestCase {
+    @MainActor
+    func testIPv4HostValidationAndPersistence() async throws {
+        let suite = "TotalMixHostTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let settings = AppSettings(defaults: defaults)
+        #if os(iOS)
+        XCTAssertEqual(settings.oscHost, "")
+        XCTAssertEqual(settings.oscSendPort, 7002)
+        XCTAssertEqual(settings.oscReceivePort, 9002)
+        #else
+        XCTAssertEqual(settings.oscHost, "127.0.0.1")
+        XCTAssertEqual(settings.oscSendPort, 7001)
+        XCTAssertEqual(settings.oscReceivePort, 9001)
+        #endif
+        settings.oscHost = "192.168.1.25"
+        XCTAssertEqual(AppSettings(defaults: defaults).oscHost, "192.168.1.25")
+        for host in ["127.0.0.1", "192.168.1.25", " 10.0.0.2 "] {
+            XCTAssertNotNil(OSCManager.ipv4Address(for: host), host)
+        }
+        for host in ["", "localhost", "192.168.1.999", "::1", "0.0.0.0", "0.1.2.3", "224.0.0.1", "255.255.255.255", "192.168.1.2:7002"] {
+            XCTAssertNil(OSCManager.ipv4Address(for: host), host)
+        }
+    }
+
     func testSnapshotAddresses() {
         XCTAssertEqual((1...8).compactMap { SnapshotCommand.address(for: $0) }, [
             "/3/snapshots/8/1", "/3/snapshots/7/1", "/3/snapshots/6/1", "/3/snapshots/5/1",

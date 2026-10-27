@@ -1,6 +1,8 @@
 # TotalMix Snapshot Touch
 
-RME TotalMix FXを、大きなボタンとフェーダーで操作するmacOSアプリです。OpenDisplayでMacの外部ディスプレイにしたiPadからのタッチ操作を主な用途としています。
+RME TotalMix FXを、大きなボタンとフェーダーで操作するmacOS / iPhone / iPadアプリです。Mac版はOpenDisplay経由のタッチ操作にも対応し、iPhone・iPad版は同じLANのTotalMixへ直接OSCで接続します。
+
+**iPhoneへApp Storeを経由せず入れる場合は、[iPhone版のインストール・接続手順](docs/iphone.md)を参照してください。** Xcodeの`TotalMixSnapshotTouchIOS` schemeから自分の端末へ署名してインストールします。
 
 ![メイン画面：Snapshot、M1 Mute、Dim、Fader 1 0 dB、音量フェーダー](docs/screenshots/main.png)
 
@@ -19,7 +21,7 @@ RME TotalMix FXを、大きなボタンとフェーダーで操作するmacOSア
 
 ウインドウはサイズ変更・フルスクリーンに対応します。Snapshotは横長で最大4列、縦長で最大2列となり、表示数に合わせてボタンのサイズを調整します。小さなウインドウではスクロールできます。
 
-## 動作環境と起動
+## Mac版の動作環境と起動
 
 - macOS 13以降
 - RME TotalMix FXと対応オーディオインターフェース
@@ -46,7 +48,9 @@ build/Build/Products/Release/TotalMixSnapshotTouch.app
 
 アプリはローカル実行用のアドホック署名です。Developer ID署名・公証は行っていないため、別のMacへの配布ではGatekeeperにより起動が制限されることがあります。
 
-## セットアップ
+## Mac版のセットアップ
+
+iPhone / iPad版は[専用Controllerを使うLAN接続設定](docs/iphone.md#2-同じlanで接続する)を参照してください。以下はMac版の設定です。
 
 すべての操作を同じMac内のOSC（UDP、`127.0.0.1`）で行います。IACバスやMIDI設定は不要です。外部ライブラリやインターネット接続は不要です。アプリはAppleScript、Accessibility API、TotalMixのUI自動操作を使用しません。
 
@@ -71,10 +75,13 @@ Global OSCモードは対象外です。実機確認にはTotalMix 1.90互換モ
 
 他のOSCリモコンと併用する場合は、専用Controllerと別のポートを用意し、両端を一致させてください。同じ受信ポートを使う本アプリを複数起動することはできません。
 
-### 2. TotalMixのグループ
+### 2. Main出力とTotalMixのグループ
 
+- **Main出力**：TotalMixの**Control Room → Assign → Main Out → Analog 1/2**を選びます。他の出力をMainにする場合は、その出力を選んでください。Control RoomにMainのフェーダーが表示されることを確認します。
 - **M1**：ミュート対象のチャンネルをMute Group 1に登録します。
 - **F1**：Hardware Outputsの**Main（AN1/2）とAN3/4**をFader Group 1に登録し、グループを有効にします。
+
+Main Outが**None**のままでは、フェーダーの操作対象となるMainがありません。SnapshotがOSC同期中でも、音量と0 dBは操作できません。この設定はMac版・iPhone/iPad版の両方に必要です。
 
 アプリの「Fader 1」はTotalMixのF1グループに対応します。フェーダーと0 dBボタンはMainを操作し、他のチャンネルへの連動はTotalMixが行います。F1が無効ならMainだけが変わります。他のチャンネル構成を使う場合は、この前提を見直してください。
 
@@ -126,6 +133,7 @@ Snapshotの選択は起動時にも取得し、TotalMix本体や別のコント�
 | Snapshotやモニター操作が無効・応答待ち | OSCを使用がONか、TotalMixのEnable OSC Control、In Use、Host、ポート、従来OSCモードを確認し再接続 |
 | 特定のSnapshotが表示されない | 設定のHIDEを確認 |
 | OSC受信ポートを開けない | 別の本アプリやOSCツールが同じポートを使っていないか |
+| OSC同期中でもフェーダー・0 dBが動かない | TotalMixのControl Room → Assign → Main OutでAnalog 1/2など実際のMain出力を選ぶ。Noneのままでは操作対象がない |
 | Mainだけ音量が変わる | TotalMixのF1メンバーと有効状態を確認 |
 
 ## 開発・検証
@@ -134,7 +142,10 @@ Snapshotの選択は起動時にも取得し、TotalMix本体や別のコント�
 make build    # Release .appをビルド
 make test     # Swift Packageの自動テスト
 make project  # ソース一覧からXcodeプロジェクトを再生成（Python 3）
-make icon     # Swift/AppKitでアイコンを再生成
+make icon     # Swift/AppKitでMacアイコンを再生成
+make ios-build   # iOSシミュレーター用ビルド
+make ios-device  # 実機arm64向け未署名ビルド（インストールには別途署名が必要）
+make ios-test    # iOSシミュレーターUIテスト
 ```
 
 自動テストはテスト専用のローカルUDPポートを使い、実機TotalMixへ送信しません。全8個のSnapshotのアドレスと送信値、HIDE・不正番号・未接続時の送信抑止、既存設定の引き継ぎ、OSCパケット、状態受信、応答前の音量送信防止、二重トグル防止、再接続・タイムアウトを検証します。
@@ -166,12 +177,14 @@ Sources/TotalMixSnapshotTouch/
   Views/MonitorControlsView.swift
   Views/SettingsView.swift
 Tests/TotalMixSnapshotTouchTests/
+iOS/                         # iPhone/iPadアプリ・設定・アイコン
+iOSUITests/                  # iOS UIと模擬OSC通信のテスト
 Resources/                    # アプリアイコンとInfo.plist
 scripts/                      # Xcodeプロジェクト・アイコン生成
 docs/screenshots/            # 実アプリのスクリーンショット
 ```
 
-設定はUserDefaultsの`local.seijiro.TotalMixSnapshotTouch`に保存します。ビルド成果物と個人用Xcode設定はGit管理から除外しています。ソースファイルを追加・削除した場合は`make project`を実行してください。
+Mac版の設定はUserDefaultsの`local.seijiro.TotalMixSnapshotTouch`、iPhone/iPad版は`local.seijiro.TotalMixSnapshotTouchIOS`に端末ごとに保存します。ビルド成果物と個人用Xcode設定はGit管理から除外しています。ソースファイルを追加・削除した場合は`make project`を実行してください。
 
 ### 通信仕様・参考資料
 
