@@ -4,22 +4,59 @@ RME TotalMix FXを、大きなボタンとフェーダーで操作するmacOS / 
 
 **iPhoneへApp Storeを経由せず入れる場合は、[iPhone版のインストール・接続手順](docs/iphone.md)を参照してください。** Xcodeの`TotalMixSnapshotTouchIOS` schemeから自分の端末へ署名してインストールします。
 
-![メイン画面：Snapshot、M1 Mute、Dim、Fader 1 0 dB、音量フェーダー](docs/screenshots/main.png)
-
-*表示名を変更し、Snapshot 1と7だけを表示した例。緑の枠とチェックはTotalMixから取得した現在の選択です。初期状態では1〜8をすべて表示します。*
-
 ## できること
 
 | 操作 | 動作 |
 | --- | --- |
-| Snapshot 1〜8 | 保存済みSnapshotを呼び出す。数字キー`1`〜`8`にも対応 |
-| 表示名・HIDE | Snapshotの名前変更と非表示。設定は再起動後も保持 |
+| Snapshot 1〜8 | 保存済みSnapshotをタップ／クリックで呼び出す。Mac版は数字キー`1`〜`8`にも対応 |
+| 表示名・HIDE | Snapshotの名前変更と非表示。端末ごとに保存し、全件非表示からも設定で復旧可能 |
 | M1 MUTE | TotalMixのMute Group 1をON/OFF |
 | DIM | Control RoomのDimをON/OFF |
 | Fader 1 0 dB | Mainを0 dBに設定し、F1内の音量差を維持して連動 |
 | Fader 1 VOLUME | MainとAN3/4を、TotalMixのF1グループで連動操作 |
 
-ウインドウはサイズ変更・フルスクリーンに対応します。Snapshotは横長で最大4列、縦長で最大2列となり、表示数に合わせてボタンのサイズを調整します。小さなウインドウではスクロールできます。
+選択中のSnapshotや音量・ON/OFFの表示には、TotalMixから受信した状態を使います。起動・再接続だけで以前の音量を送信することはありません。
+
+## iPhone / iPad版
+
+iOS / iPadOS 17以降に対応するネイティブアプリです。同じWi-Fi／LANのMacで動くTotalMixへOSCで直接接続します。Macの画面転送やOpenDisplay、追加の中継アプリは不要です。
+
+| Snapshot画面 | モニター操作 | 接続設定 |
+| --- | --- | --- |
+| [<img src="docs/screenshots/iphone-main.png" width="220" alt="iPhone版：Snapshot 1〜8と現在の選択">](docs/screenshots/iphone-main.png) | [<img src="docs/screenshots/iphone-monitor.png" width="220" alt="iPhone版：M1 MUTE、DIM、0 dBと音量フェーダー">](docs/screenshots/iphone-monitor.png) | [<img src="docs/screenshots/iphone-settings.png" width="220" alt="iPhone版：MacのIPv4とOSCポートの接続設定">](docs/screenshots/iphone-settings.png) |
+
+*画面例はiPhone 17 Proシミュレーターで、模擬OSC応答を受信した実アプリのスクリーンショットです。設定画像の`127.0.0.1`・`17002`・`19002`はテスト用の値です。実機では下記の接続設定を使います。*
+
+### iPhoneで使える機能
+
+| 機能 | iPhone / iPadでの動作 |
+| --- | --- |
+| タッチ操作 | 大きなSnapshotボタンと音量スライダー。モニター操作は画面を下へスクロールして表示 |
+| 表示の調整 | 画面幅に応じた2列／4列表示と縦横表示に対応。アクセシビリティの大きな文字では1列表示 |
+| 名前・HIDE | 設定画面で編集して即時保存。TotalMix側のSnapshot名や保存内容は変更しない |
+| LAN接続設定 | MacのIPv4・送受信ポートを指定。「適用・再接続」で保存し、設定内に端末のWi-Fi IPv4も表示 |
+| 状態同期・復帰 | アプリを離れると切断し、戻るとTotalMixの現在値を再取得。応答が途切れた操作は無効化 |
+
+### 導入と接続の概要
+
+1. Xcodeで`TotalMixSnapshotTouchIOS` schemeを選び、自分の開発チームで署名してiPhoneへインストールします。端末ではデベロッパモードとローカルネットワークへのアクセスを許可します。
+2. MacとiPhoneを同じLANへ接続し、TotalMixの**Controller 2**をiPhone用に設定します。Mac版はController 1を使うため、併用できます。
+3. TotalMixの**Control Room → Assign → Main Out**を実際の出力へ割り当て、M1・F1グループを設定します。Main Outが**None**のままでは音量操作が反映されません。
+
+| 設定先 | 送信先アドレス | 送信先ポート | 受信ポート |
+| --- | --- | --- | --- |
+| iPhoneアプリ | TotalMixが動くMacのLAN IPv4 | **7002** | **9002** |
+| TotalMix Controller 2 | iPhoneのWi-Fi IPv4 | **9002**（Port outgoing） | **7002**（Port incoming） |
+
+IPv4アドレスの直接入力に対応します。詳しい署名・インストール手順、TotalMix側の設定、接続トラブルの対処は、[iPhone版のインストール・接続手順](docs/iphone.md)を参照してください。
+
+## Mac版の画面
+
+![Mac版：Snapshot、M1 Mute、Dim、Fader 1 0 dB、音量フェーダー](docs/screenshots/main.png)
+
+*表示名を変更し、Snapshot 1と7だけを表示した例。緑の枠とチェックはTotalMixから取得した現在の選択です。初期状態では1〜8をすべて表示します。*
+
+Mac版のウインドウはサイズ変更・フルスクリーンに対応します。Snapshotは横長で最大4列、縦長で最大2列となり、表示数に合わせてボタンのサイズを調整します。小さなウインドウではスクロールできます。
 
 ## Mac版の動作環境と起動
 
@@ -93,16 +130,16 @@ Main Outが**None**のままでは、フェーダーの操作対象となるMain
 
 ### Snapshotの名前とHIDE
 
-右上の「設定」、または`⌘,`から編集します。
+右上の「設定」から編集します。Mac版は`⌘,`でも開けます。
 
 ![Snapshotの表示名とHIDE設定](docs/screenshots/settings-snapshots.png)
 
-- HIDEをオンにしたSnapshotは、ボタンも対応する数字キーも無効になります。
+- HIDEをオンにしたSnapshotは、ボタンを非表示にします。Mac版では対応する数字キーも無効になります。
 - 元の番号と名前は保持され、HIDEをオフにすると再表示できます。
 - 全件非表示にしても「設定で再表示する」から戻せます。
 - 「表示名を初期値に戻す」は名前だけを戻します。
 - 変更は自動保存されます。TotalMix側のSnapshot名や保存内容は変更しません。
-- 設定画面を開いている間は、数字キーによるSnapshot呼び出しを無効にします。
+- Mac版では、設定画面を開いている間の数字キーによるSnapshot呼び出しを無効にします。
 
 ### モニター操作
 
@@ -118,7 +155,7 @@ Main Outが**None**のままでは、フェーダーの操作対象となるMain
 | --- | --- |
 | Snapshotの強調・チェック | **OSCで受信したTotalMixの現在の選択**。アプリ外の切り替えにも追従 |
 | M1・DimのON/OFF、Fader 1のdB表示 | **OSCで受信したTotalMixの状態** |
-| モニター操作パネルの「OSC同期中」 | TotalMixから最近の応答を受信している。各Snapshotコマンドの適用完了を保証する表示ではない |
+| 「OSC同期中」（Mac版はモニター操作パネル、iPhone版は画面上部） | TotalMixから最近の応答を受信している。各Snapshotコマンドの適用完了を保証する表示ではない |
 
 Snapshotの選択は起動時にも取得し、TotalMix本体や別のコントローラーからの切り替えにも追従します。ページを交互に問い合わせるため、反映まで通常約1〜2秒かかる場合があります。HIDE中のSnapshotが選択されている場合、表示中のボタンは強調しません。
 
@@ -150,7 +187,14 @@ make ios-test    # iOSシミュレーターUIテスト
 
 自動テストはテスト専用のローカルUDPポートを使い、実機TotalMixへ送信しません。全8個のSnapshotのアドレスと送信値、HIDE・不正番号・未接続時の送信抑止、既存設定の引き継ぎ、OSCパケット、状態受信、応答前の音量送信防止、二重トグル防止、再接続・タイムアウトを検証します。
 
-2026-09-07時点の確認結果：
+2026-10-27のiPhone版の確認結果：
+
+- iPhone 17 / iOS 27.0への署名付きインストールと、ホーム画面からの起動を確認。
+- Mac版・iPhone版の両方でMainフェーダーの連動をユーザー確認。iPhoneからの音量コマンドとTotalMixからの数値・dB応答も実UDPで確認。
+- iPhone 17 Pro / iOS 26.5シミュレーターでUIテスト2件、共通モデル・OSCテスト5件が成功。画面例3枚を掲載。
+- iPadネイティブ版の実機動作は未確認。検証の詳細は[iPhone版の手順書](docs/iphone.md#ビルド検証)を参照。
+
+2026-09-07のMac版OSC統一時の確認結果：
 
 - UI整理後のReleaseビルドと起動を確認。メイン・接続設定・HIDE設定のスクリーンショットを更新。
 - Snapshot選択同期の実機確認: アプリ起動時の取得、TotalMix本体での1→7→2（HIDE中）→1の切り替えに追従。全8個の選択受信、非選択通知、未応答・再接続時の解除は自動テストでも確認。

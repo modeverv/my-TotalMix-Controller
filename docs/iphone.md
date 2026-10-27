@@ -4,9 +4,24 @@ App Storeを経由せず、自分のiPhoneへXcodeからインストールして
 
 Snapshot 1〜8、表示名・HIDE、M1 MUTE、DIM、Fader 1の音量・0 dB操作ができます。選択中Snapshot・ミュート・DIM・音量の表示はTotalMixから受け取った状態です。アプリの起動・復帰だけでミックスや音量を復元することはありません。
 
-<img src="screenshots/iphone-main.png" alt="iPhone版のSnapshot画面" width="300"> <img src="screenshots/iphone-monitor.png" alt="iPhone版のモニター操作画面" width="300">
+## 画面と機能
 
-画面例はiPhone 17 Proシミュレーターで、テスト用OSC応答を受信した実アプリのスクリーンショットです。実機TotalMixの接続結果ではありません。[接続設定画面](screenshots/iphone-settings.png)も参照できます。
+| Snapshot画面 | モニター操作 | 接続設定 |
+| --- | --- | --- |
+| [<img src="screenshots/iphone-main.png" alt="Snapshot 1〜8と現在の選択" width="220">](screenshots/iphone-main.png) | [<img src="screenshots/iphone-monitor.png" alt="M1 MUTE、DIM、0 dBと音量フェーダー" width="220">](screenshots/iphone-monitor.png) | [<img src="screenshots/iphone-settings.png" alt="MacのIPv4と送受信ポートの設定" width="220">](screenshots/iphone-settings.png) |
+
+画面例はiPhone 17 Proシミュレーターで、テスト用OSC応答を受信した実アプリのスクリーンショットです。設定画像の`127.0.0.1`・`17002`・`19002`はテスト用の値です。実機ではMacのLAN IPv4と、後述の`7002`・`9002`を設定してください。
+
+| 画面・機能 | 使い方 |
+| --- | --- |
+| Snapshot | 大きなボタンで保存済みミックスを呼び出す。TotalMixから選択状態を受信すると枠とチェックを表示 |
+| モニター | メイン画面を下へスクロールしてM1 MUTE・DIM・0 dB・音量フェーダーを操作。音量は受信したdB値を表示 |
+| 名前・HIDE | 設定内のSnapshot一覧で編集すると端末内へ即時保存。全件非表示でも設定から再表示可能 |
+| 接続設定 | MacのIPv4とポートを入力し、「接続設定を適用・再接続」で保存。この画面に端末のWi-Fi IPv4とTotalMix側の設定案内も表示 |
+| レイアウト | 画面幅で2列／4列へ切り替え。縦横表示とスクロールに対応し、アクセシビリティの大きな文字では1列表示 |
+| 復帰時の同期 | 別のアプリへ切り替えると通信を停止。戻ると現在値を取得し直し、応答後に操作を再開 |
+
+iPhone / iPad版はiOS / iPadOS 17以降が対象です。ネイティブiPad版はビルドとレイアウトで対応していますが、iPad実機での動作は未確認です。
 
 ## 1. iPhoneにインストールする
 
@@ -118,7 +133,7 @@ make ios-test IOS_TEST_DESTINATION='platform=iOS Simulator,name=iPhone 17'
 - シミュレーター：`build/ios/Build/Products/Debug-iphonesimulator/TotalMixSnapshotTouchIOS.app`
 - 実機向け未署名：`build/ios-device/Build/Products/Release-iphoneos/TotalMixSnapshotTouchIOS.app`
 
-自動テストはテスト用UDPポートと模擬OSC応答を使います。実機TotalMixの音量・Snapshotへコマンドを送りません。iPhone実機のローカルネットワーク許可、Wi-Fi経由の実際のTotalMix操作、F1のオーディオインターフェース連動は、署名して端末へインストールした後の確認対象です。
+自動テストはテスト用UDPポートと模擬OSC応答を使い、実機TotalMixへコマンドを送りません。実機での確認結果は以下に分けて記録しています。
 
 2026-10-27の確認結果：
 
